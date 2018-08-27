@@ -3,6 +3,29 @@ name = "fzyr"
 version = "0.1.0"
 authors = ["yonni12 <https://github.com/yonni12>"]
 
+# TODO:
+# description = ""
+# repository = ""
+# documentation = ""
+
+# TODO:
+# readme = ""
+# categories = [""]
+# keywords = [""]
+# license = "MIT"
+
+autobins = false
+
+
+[lib]
+name = "fzyr"
+
+[[bin]]
+name = "fzyr"
+path = "src/bin/main.rs"
+doc = false
+
+
 [dependencies]
 ndarray = "^0.11.2"
 itertools = "^0.7.8"
@@ -10,3 +33,9 @@ crossbeam = "^0.4.1"
 bit-vec = "^0.5.0"
 clap = "^2.32.0"
 console = "^0.6.1"
+
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
