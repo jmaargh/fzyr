@@ -61,15 +61,10 @@ Coming soon...
 ## Algorithm
 
 The alorithm is near-identical to that of `fzy`. That means:
-
 + Search is case-insensitive (all characters are converted to their unicode-defined lowercase version, if one exists)
-
 + Results must contain the entire query string, in the right order, but without the letters necessarily being consecutive
-
 + Results are all given a numerical score, and returned in best-score-first order
-
 + Prefers consecutive characters and characters that start words/filenames
-
 + Prefers shorter results
 
 ## To-do list
