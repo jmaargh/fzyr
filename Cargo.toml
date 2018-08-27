@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["yonni12 <https://github.com/yonni12>"]
 
 description = "A fuzzy(er) finder 🔎"
+repository = "https://github.com/yonni12/fzyr"
 # TODO:
-# repository = ""
 # documentation = ""
 
 readme = "README.md"
