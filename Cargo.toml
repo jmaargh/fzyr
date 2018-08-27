@@ -3,16 +3,17 @@ name = "fzyr"
 version = "0.1.0"
 authors = ["yonni12 <https://github.com/yonni12>"]
 
+description = "A fuzzy(er) finder 🔎"
 # TODO:
-# description = ""
 # repository = ""
 # documentation = ""
 
 # TODO:
 # readme = ""
-# categories = [""]
-# keywords = [""]
-# license = "MIT"
+categories = ["algorithms", "command-line-utilites"]
+keywords = ["fuzzy", "finder", "find", "search"]
+license = "MIT"
+license-file = "LICENSE"
 
 autobins = false
 
