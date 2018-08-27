@@ -5,10 +5,10 @@ use std::io::Write;
 
 use self::console::{Key, Style, Term};
 
+use fzyr::config::SCORE_MIN;
+use fzyr::{search_locate, LocateResult, LocateResults};
+
 use super::opts;
-use score::config::SCORE_MIN;
-use score::LocateResult;
-use search::{search_locate, LocateResults};
 
 pub fn run(candidates: &[&str], options: &opts::Options) -> i32 {
   let mut terminal = Terminal::new(&options.prompt, options.show_scores, options.lines);

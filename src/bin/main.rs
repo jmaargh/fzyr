@@ -1,13 +1,13 @@
-mod app;
-mod score;
-mod search;
+extern crate fzyr;
+
+mod interactive;
+mod opts;
 
 use std::io;
 use std::process;
 
-use app::{interactive, opts};
-use score::config::SCORE_MIN;
-use search::search_score;
+use fzyr::config::SCORE_MIN;
+use fzyr::search_score;
 
 fn candidates_from_stdin() -> Vec<String> {
   let stdin = io::stdin();
