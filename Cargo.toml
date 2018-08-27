@@ -1,6 +1,7 @@
 [package]
 name = "fzyr"
 version = "0.1.1"
+homepage = "https://github.com/yonni12/fzyr"
 authors = ["yonni12 <https://github.com/yonni12>"]
 
 description = "A fuzzy(er) finder 🔎"
