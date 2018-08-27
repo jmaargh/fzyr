@@ -9,7 +9,7 @@ repository = "https://github.com/yonni12/fzyr"
 # documentation = ""
 
 readme = "README.md"
-categories = ["algorithms", "command-line-utilites"]
+categories = ["algorithms", "command-line-utilities"]
 keywords = ["fuzzy", "finder", "find", "search"]
 license = "MIT"
 license-file = "LICENSE"
