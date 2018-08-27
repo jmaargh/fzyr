@@ -26,7 +26,11 @@ fn candidates_from_stdin() -> Vec<String> {
 }
 
 fn to_slices<'src>(strings: &'src Vec<String>) -> Vec<&'src str> {
-  strings.iter().map(|s| s.trim()).collect()
+  strings
+    .iter()
+    .map(|s| s.trim())
+    .filter(|s| !s.is_empty())
+    .collect()
 }
 
 fn run() -> i32 {
