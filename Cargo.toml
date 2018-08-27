@@ -8,8 +8,7 @@ description = "A fuzzy(er) finder 🔎"
 # repository = ""
 # documentation = ""
 
-# TODO:
-# readme = ""
+readme = "README.md"
 categories = ["algorithms", "command-line-utilites"]
 keywords = ["fuzzy", "finder", "find", "search"]
 license = "MIT"
@@ -20,6 +19,7 @@ autobins = false
 
 [lib]
 name = "fzyr"
+
 
 [[bin]]
 name = "fzyr"
