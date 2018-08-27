@@ -11,19 +11,13 @@ Basically [fzy](https://github.com/jhawthorn/fzy) re-written in [Rust](https://w
 `fzyr` is very similar to `fzy`, so inherits its advantages (at least as of Aug 2018). For most purposes it should be usable as a drop-in replacement.
 
 Advantages over `fzy`:
-
 + It's works on Windows! Or at least it should, that's not actually been tested yet, let me know if it doesn't 🖥
-
 + It works with all unicode strings! Hello, rest of the world 🗺️
-
 + You can easily install with [Cargo](https://doc.rust-lang.org/stable/cargo/)! Cross-platform package management 📦
-
 + It's a Rust library! Use the algorithm in your own projects 😀
 
 Disadvantages over `fzy`:
-
 + It's less-well tested
-
 + It doesn't support arbitrary tty i/o (only stdin/stdout)
 
 ## Installation
@@ -77,3 +71,14 @@ The alorithm is near-identical to that of `fzy`. That means:
 + Prefers consecutive characters and characters that start words/filenames
 
 + Prefers shorter results
+
+## To-do list
+
+Feel free to make a PR if you're so moved
++ Library documentation
++ Tests for `search_locate()`
++ Integration tests
++ Benchmarks
++ Package for various OSs
++ Zero-allocation search
++ Arbitrary tty i/o
