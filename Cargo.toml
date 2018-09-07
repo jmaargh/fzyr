@@ -12,7 +12,6 @@ repository = "https://github.com/yonni12/fzyr"
 readme = "README.md"
 categories = ["algorithms", "command-line-utilities"]
 keywords = ["fuzzy", "finder", "find", "search"]
-license = "MIT"
 license-file = "LICENSE"
 
 autobins = false
