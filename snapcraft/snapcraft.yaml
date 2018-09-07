@@ -1,5 +1,5 @@
 name: fzyr
-version: 0.1.1
+version: 0.1.2
 summary: Fast, light, robust Ethereum implementation
 description: |
   **fzyr** is a simple and fast fuzzy text search. It exists as both a Rust 
