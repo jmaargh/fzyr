@@ -28,13 +28,13 @@ Disadvantages over `fzy`:
 You can install on any supported platform using Cargo, Rust's excellent pacakge
 manager.
 
-    cargo install fzyr
+    $ cargo install fzyr
 
 # Linux
 
 You can use Cargo, or if you'd prefer install as a [snap](https://snapcraft.io/)
 
-    snap install fzyr
+    $ snap install fzyr
 
 # Homebrew
 
