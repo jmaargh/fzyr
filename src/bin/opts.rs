@@ -4,6 +4,7 @@ use self::clap::{App, Arg};
 
 pub const NAME: &'static str = env!("CARGO_PKG_NAME");
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const WEBSITE: &'static str = env!("CARGO_PKG_HOMEPAGE");
 pub const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 
 pub const DEFLT_STRING_BUFFER_LEN: usize = 128;
@@ -40,9 +41,12 @@ pub fn cmd_parse() -> Options {
   let deflt_prompt = out.prompt.to_string();
   let deflt_benchmark = out.benchmark.to_string();
 
+  let long_about: String = format!("{}\n[{}]", DESCRIPTION, WEBSITE);
+
   let matches = App::new(NAME)
     .version(VERSION)
     .about(DESCRIPTION)
+    .long_about(long_about.as_ref())
     .arg(
       Arg::with_name("query")
         .short("q")
