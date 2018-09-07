@@ -19,16 +19,22 @@ Advantages over `fzy`:
 Disadvantages over `fzy`:
 + It's less-well tested
 + It doesn't support arbitrary tty i/o (only stdin/stdout)
++ Interactive mode needs more work
 
 ## Installation
 
 # [Cargo](https://doc.rust-lang.org/stable/cargo/)
 
+You can install on any supported platform using Cargo, Rust's excellent pacakge
+manager.
+
     cargo install fzyr
 
-# Ubuntu
+# Linux
 
-Deb coming soon...
+You can use Cargo, or if you'd prefer install as a [snap](https://snapcraft.io/)
+
+    snap install fzyr
 
 # Homebrew
 
@@ -70,6 +76,7 @@ The alorithm is near-identical to that of `fzy`. That means:
 ## To-do list
 
 Feel free to make a PR if you're so moved
++ Improve interactive mode
 + Library documentation
 + Tests for `search_locate()`
 + Integration tests
