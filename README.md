@@ -30,6 +30,8 @@ manager.
 
     $ cargo install fzyr
 
+[Crates.io link](https://crates.io/crates/fzyr)
+
 # Linux
 
 You can use Cargo, or if you'd prefer install as a [snap](https://snapcraft.io/)
