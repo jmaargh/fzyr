@@ -1,6 +1,6 @@
 name: fzyr
 version: 0.1.2
-summary: Fast, light, robust Ethereum implementation
+summary: A fuzzy(er) finder 🔎
 description: |
   **fzyr** is a simple and fast fuzzy text search. It exists as both a Rust 
   library and a standalone executable. Basically fzr re-written in Rust.
