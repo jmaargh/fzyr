@@ -182,3 +182,80 @@ use score::config::*;
 use score::{is_match, MatchMask, Score};
 
 type ScoreMatrix = ndarray::Array2<Score>;
+
+//==============================================================================
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn character_bonuses() {
+    assert_eq!(0.0, Comparer::character_match_bonus('a', 'b'));
+    assert_eq!(0.0, Comparer::character_match_bonus('0', '#'));
+    assert_eq!(0.0, Comparer::character_match_bonus('¬', '9'));
+    assert_eq!(0.0, Comparer::character_match_bonus('@', 'b'));
+    assert_eq!(0.0, Comparer::character_match_bonus('&', ','));
+    assert_eq!(0.0, Comparer::character_match_bonus('😨', '♫'));
+    assert_eq!(0.0, Comparer::character_match_bonus('♺', 'ƹ'));
+    assert_eq!(0.0, Comparer::character_match_bonus('x', '¯'));
+    assert_eq!(0.0, Comparer::character_match_bonus('Ɣ', '®'));
+    assert_eq!(0.0, Comparer::character_match_bonus(']', '·'));
+    assert_eq!(0.0, Comparer::character_match_bonus('A', 'B'));
+    assert_eq!(0.0, Comparer::character_match_bonus('a', 'B'));
+    assert_eq!(0.0, Comparer::character_match_bonus('Б', 'Б'));
+    assert_eq!(0.0, Comparer::character_match_bonus('и', 'Б'));
+
+    assert_eq!(
+      SCORE_MATCH_CAPITAL,
+      Comparer::character_match_bonus('G', 'r')
+    );
+    assert_eq!(
+      SCORE_MATCH_CAPITAL,
+      Comparer::character_match_bonus('Б', 'и')
+    );
+
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('a', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('0', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('¬', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('@', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('&', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('😨', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('♺', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('x', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('Ɣ', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus(']', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('A', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('Б', '/'));
+    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('и', '/'));
+
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('a', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('0', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('¬', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('@', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('&', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('😨', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('♺', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('x', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('Ɣ', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus(']', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('A', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('Б', '.'));
+    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('и', '.'));
+
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('a', ' '));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('0', '-'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('¬', '_'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('@', ' '));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('&', '-'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('😨', '_'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('♺', ' '));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('x', '-'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('Ɣ', '_'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus(']', ' '));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('A', '-'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('Б', '_'));
+    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('и', ' '));
+  }
+
+}
