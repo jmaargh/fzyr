@@ -23,7 +23,7 @@ Disadvantages over `fzy`:
 
 ## Installation
 
-# [Cargo](https://doc.rust-lang.org/stable/cargo/)
+### [Cargo](https://doc.rust-lang.org/stable/cargo/)
 
 You can install on any supported platform using Cargo, Rust's excellent pacakge
 manager.
@@ -32,17 +32,17 @@ manager.
 
 [Crates.io link](https://crates.io/crates/fzyr)
 
-# Linux
+### Linux
 
 You can use Cargo, or if you'd prefer install as a [snap](https://snapcraft.io/)
 
     $ snap install fzyr
 
-# Homebrew
+### Homebrew
 
 Might arrive at some point...
 
-# Windows
+### Windows
 
 Use Cargo
 
