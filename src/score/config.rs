@@ -4,7 +4,9 @@ use std::f64;
 
 use score::Score;
 
+/// Score given when the query doesn't match the candidate at all
 pub const SCORE_MIN: Score = f64::NEG_INFINITY;
+/// Score given when the query matches the candidate perfectly
 pub const SCORE_MAX: Score = f64::INFINITY;
 
 pub const SCORE_GAP_LEADING: Score = -0.005;

@@ -1,5 +1,6 @@
-mod score;
+pub mod score;
 mod search;
 
-pub use score::{config, has_match, locate, score, LocateResult, Score, ScoreResult};
-pub use search::{search_locate, search_score, LocateResults, ScoreResults};
+pub use score::{config, is_match, score, PositionalCandidate, Score};
+// FIXME
+// pub use search::{search_locate, search_score, LocateResults, ScoreResults};

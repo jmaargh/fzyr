@@ -1,75 +1,77 @@
-extern crate fzyr;
+fn main() {}
 
-mod interactive;
-mod opts;
+// extern crate fzyr;
 
-use std::io;
-use std::process;
+// mod interactive;
+// mod opts;
 
-use fzyr::config::SCORE_MIN;
-use fzyr::search_score;
+// use std::io;
+// use std::process;
 
-fn candidates_from_stdin() -> Vec<String> {
-  let stdin = io::stdin();
+// use fzyr::config::SCORE_MIN;
+// use fzyr::search_score;
 
-  let mut out = Vec::new();
-  let mut buff = String::with_capacity(opts::DEFLT_STRING_BUFFER_LEN);
-  while let Ok(bytes) = stdin.read_line(&mut buff) {
-    if bytes == 0 {
-      break;
-    }
-    out.push(buff.clone());
-    buff.clear();
-  }
+// fn candidates_from_stdin() -> Vec<String> {
+//   let stdin = io::stdin();
 
-  out
-}
+//   let mut out = Vec::new();
+//   let mut buff = String::with_capacity(opts::DEFLT_STRING_BUFFER_LEN);
+//   while let Ok(bytes) = stdin.read_line(&mut buff) {
+//     if bytes == 0 {
+//       break;
+//     }
+//     out.push(buff.clone());
+//     buff.clear();
+//   }
 
-fn to_slices<'src>(strings: &'src Vec<String>) -> Vec<&'src str> {
-  strings
-    .iter()
-    .map(|s| s.trim())
-    .filter(|s| !s.is_empty())
-    .collect()
-}
+//   out
+// }
 
-fn run() -> i32 {
-  let options = opts::cmd_parse();
+// fn to_slices<'src>(strings: &'src Vec<String>) -> Vec<&'src str> {
+//   strings
+//     .iter()
+//     .map(|s| s.trim())
+//     .filter(|s| !s.is_empty())
+//     .collect()
+// }
 
-  if options.benchmark > 0 && options.query.is_empty() {
-    println!("To benchmark, provide a query with one of the -q/-e/--query/--show-matches flags");
-    return 1;
-  }
+// fn run() -> i32 {
+//   let options = opts::cmd_parse();
 
-  let candidates = candidates_from_stdin();
-  let candidates = to_slices(&candidates);
+//   if options.benchmark > 0 && options.query.is_empty() {
+//     println!("To benchmark, provide a query with one of the -q/-e/--query/--show-matches flags");
+//     return 1;
+//   }
 
-  if options.benchmark > 0 {
-    // Run a benchmarking run without output
-    for _ in 0..options.benchmark {
-      search_score(&options.query, &candidates, options.parallelism);
-    }
-    0
-  } else if !options.query.is_empty() {
-    // Run printing to stdout
-    let results = search_score(&options.query, &candidates, options.parallelism);
-    for result in results.iter().take(options.lines) {
-      if options.show_scores {
-        if result.score == SCORE_MIN {
-          print!("(     ) ");
-        } else {
-          print!("({:5.2}) ", result.score);
-        }
-        println!("{}", result.candidate);
-      }
-    }
-    0
-  } else {
-    // Run interactively
-    interactive::run(&candidates, &options)
-  }
-}
+//   let candidates = candidates_from_stdin();
+//   let candidates = to_slices(&candidates);
 
-fn main() {
-  process::exit(run());
-}
+//   if options.benchmark > 0 {
+//     // Run a benchmarking run without output
+//     for _ in 0..options.benchmark {
+//       search_score(&options.query, &candidates, options.parallelism);
+//     }
+//     0
+//   } else if !options.query.is_empty() {
+//     // Run printing to stdout
+//     let results = search_score(&options.query, &candidates, options.parallelism);
+//     for result in results.iter().take(options.lines) {
+//       if options.show_scores {
+//         if result.score == SCORE_MIN {
+//           print!("(     ) ");
+//         } else {
+//           print!("({:5.2}) ", result.score);
+//         }
+//         println!("{}", result.candidate);
+//       }
+//     }
+//     0
+//   } else {
+//     // Run interactively
+//     interactive::run(&candidates, &options)
+//   }
+// }
+
+// fn main() {
+//   process::exit(run());
+// }
