@@ -64,7 +64,8 @@ Explore the options with:
 
 ## Library documentation
 
-Coming soon...
+Documentation for using the library can be found on
+[docs.rs](https://docs.rs/fzyr/0.1.2/fzyr/).
 
 ## Algorithm
 
