@@ -6,8 +6,7 @@ authors = ["yonni12 <https://github.com/yonni12>"]
 
 description = "A fuzzy(er) finder 🔎"
 repository = "https://github.com/yonni12/fzyr"
-# TODO:
-# documentation = ""
+documentation = "https://docs.rs/fzyr"
 
 readme = "README.md"
 categories = ["algorithms", "command-line-utilities"]
