@@ -11,8 +11,8 @@ pub struct Comparer<'q, 'c> {
   candidate: &'c str,
   q_len: usize,
   c_len: usize,
-  best_score_overall: ScoreMatrix,
-  best_score_ending: ScoreMatrix,
+  best_score: Score,
+  trace_matrix: TraceMatrix,
   match_bonuses: Vec<f64>,
 }
 
@@ -48,13 +48,15 @@ impl<'q, 'c> Comparer<'q, 'c> {
     let mut bonuses = Vec::new();
     Self::candidate_match_bonuses(&mut bonuses, candidate, c_len);
 
+    // N.B. We need an extra row and column to account for trailing gaps and
+    // work out the optimal path
     Ok(Self {
       query: query,
       candidate: candidate,
       q_len: q_len,
       c_len: c_len,
-      best_score_overall: ScoreMatrix::zeros((q_len, c_len)),
-      best_score_ending: ScoreMatrix::zeros((q_len, c_len)),
+      best_score: SCORE_MIN,
+      trace_matrix: TraceMatrix::from_elem((q_len + 1, c_len + 1), TraceEdges::new()),
       match_bonuses: bonuses,
     })
   }
@@ -62,7 +64,7 @@ impl<'q, 'c> Comparer<'q, 'c> {
   /// Calculate the score
   pub fn score(&mut self) -> Score {
     self.score_internal();
-    self.best_score_overall[[self.q_len - 1, self.c_len - 1]]
+    self.best_score
   }
 
   /// Calculate the score and mark the given match according to where the
@@ -77,68 +79,94 @@ impl<'q, 'c> Comparer<'q, 'c> {
 
     self.score_internal();
     self.locate_internal(mask);
-    self.best_score_overall[[self.q_len - 1, self.c_len - 1]]
+    self.best_score
   }
 
   fn score_internal(&mut self) {
-    for (i, q_char) in self.query.chars().enumerate() {
-      let mut prev_score = SCORE_MIN;
-      let gap_score = if i == self.q_len - 1 {
+    // We can skip candidate characters too close to the beginning to be
+    // possible matches. We can also skip candidate characters too close to the
+    // end to leave enough room for the rest of the matches. The result being
+    // that we only ever need to look at this many c_chars per q_char
+    let c_chars_per_iter = self.c_len - self.q_len + 1;
+
+    let mut q_iter = self.query.chars();
+    for i in 0..=self.q_len {
+      let q_char = q_iter.next().unwrap_or('\0'); // Assumes `\0` will not match
+                                                  // anything
+
+      let gap_score = if i == 0 {
+        SCORE_GAP_LEADING
+      } else if i == self.q_len {
         SCORE_GAP_TRAILING
       } else {
         SCORE_GAP_INNER
       };
 
-      for (j, c_char) in self.candidate.chars().enumerate() {
-        if q_char.to_lowercase().eq(c_char.to_lowercase()) {
-          // Get the score bonus for matching this char
-          let score = if i == 0 {
-            // Beginning of the query, penalty for leading gap
-            (j as Score * SCORE_GAP_LEADING) + self.match_bonuses[j]
-          } else if j != 0 {
-            // Middle of both query and candidate
-            // Either give it the match bonus, or use the consecutive
-            // match (which wil always be higher, but doesn't stack
-            // with match bonus)
-            (self.best_score_overall[[i - 1, j - 1]] + self.match_bonuses[j])
-              .max(self.best_score_ending[[i - 1, j - 1]] + SCORE_MATCH_CONSECUTIVE)
-          } else {
-            SCORE_MIN
-          };
+      let max_c_bound = if i == self.q_len {
+        self.c_len + 1
+      } else {
+        i + c_chars_per_iter
+      };
 
-          prev_score = score.max(prev_score + gap_score);
-          self.best_score_overall[[i, j]] = prev_score;
-          self.best_score_ending[[i, j]] = score;
+      let mut c_iter = self.candidate.chars().skip(i);
+      for j in i..max_c_bound {
+        // N.B. we need the `_or` value here to not match the `_or` value from
+        // before
+        let c_char = c_iter.next().unwrap_or(' ');
+        // Work out if our best incoming edge is the `yes` edge from the
+        // previous query character, or a `no` edge from the same q_char
+        // and get the corresponding score
+        let (prev_best_was_match, prev_best_score) = if i == 0 {
+          (false, SCORE_GAP_LEADING * j as Score)
         } else {
-          // Give the score penalty for the gap
-          prev_score = prev_score + gap_score;
-          self.best_score_overall[[i, j]] = prev_score;
-          // We don't end in a match
-          self.best_score_ending[[i, j]] = SCORE_MIN;
+          // Neither `i` nor `j` is ever zero here
+          if self.trace_matrix[[i - 1, j - 1]].yes.score > self.trace_matrix[[i, j - 1]].no.score {
+            (true, self.trace_matrix[[i - 1, j - 1]].yes.score)
+          } else {
+            (false, self.trace_matrix[[i, j - 1]].no.score)
+          }
+        };
+
+        // We can alwasy go on the `no` edge, so record its best score
+        self.trace_matrix[[i, j]].no.prev_was_match = prev_best_was_match;
+        self.trace_matrix[[i, j]].no.score = prev_best_score;
+        if j != self.c_len {
+          // We only record the gap if we're not on the "extra" row
+          self.trace_matrix[[i, j]].no.score += gap_score;
+        }
+
+        if q_char.to_lowercase().eq(c_char.to_lowercase()) {
+          // The `yes` edge is also viable from here
+          self.trace_matrix[[i, j]].yes.prev_was_match = prev_best_was_match;
+          self.trace_matrix[[i, j]].yes.score = if prev_best_was_match {
+            SCORE_MATCH_CONSECUTIVE
+          } else {
+            self.match_bonuses[j]
+          } + prev_best_score;
         }
       }
     }
+
+    self.best_score = self.trace_matrix[[self.q_len, self.c_len]].no.score;
   }
 
   fn locate_internal(&mut self, mask: &mut MatchMask) {
-    let mut query_iter = self.query.chars();
-    let mut cand_iter = self.candidate.chars();
+    mask.clear();
+
     let mut i = self.q_len;
     let mut j = self.c_len;
-    while query_iter.next_back() != None {
-      i = i.wrapping_sub(1);
-      while cand_iter.next_back() != None {
-        j = j.wrapping_sub(1);
-        if self.best_score_ending[[i, j]] != SCORE_MIN
-          && self.best_score_ending[[i, j]] == self.best_score_overall[[i, j]]
-        {
-          // There's a match here that was on an optimal path
-          mask.set(j, true);
-          break; // Go to the next query letter
-        } else {
-          mask.set(j, false);
-        }
-      }
+    let mut was_match = false;
+    while i != 0 {
+      was_match = if was_match {
+        // We'll never be out of bounds here, because the [q_len, ..] row
+        // never matches
+        mask.set(j, true);
+        i -= 1;
+        self.trace_matrix[[i, j]].yes.prev_was_match
+      } else {
+        self.trace_matrix[[i, j]].no.prev_was_match
+      };
+      j -= 1;
     }
   }
 
@@ -181,7 +209,37 @@ impl<'q, 'c> Comparer<'q, 'c> {
 use score::config::*;
 use score::{is_match, MatchMask, Score};
 
-type ScoreMatrix = ndarray::Array2<Score>;
+type TraceMatrix = ndarray::Array2<TraceEdges>;
+
+#[derive(Copy, Clone)]
+struct TraceEdges {
+  yes: TraceEdge,
+  no: TraceEdge,
+}
+
+impl TraceEdges {
+  fn new() -> Self {
+    Self {
+      yes: TraceEdge::new(),
+      no: TraceEdge::new(),
+    }
+  }
+}
+
+#[derive(Copy, Clone)]
+struct TraceEdge {
+  score: Score,
+  prev_was_match: bool,
+}
+
+impl TraceEdge {
+  fn new() -> Self {
+    Self {
+      score: SCORE_MIN,
+      prev_was_match: false,
+    }
+  }
+}
 
 //==============================================================================
 
@@ -217,24 +275,45 @@ mod tests {
 
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('a', '/'));
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('0', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('¬', '/'));
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('¬', '/')
+    );
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('@', '/'));
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('&', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('😨', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('♺', '/'));
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('😨', '/')
+    );
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('♺', '/')
+    );
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('x', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('Ɣ', '/'));
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('Ɣ', '/')
+    );
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus(']', '/'));
     assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('A', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('Б', '/'));
-    assert_eq!(SCORE_MATCH_SLASH, Comparer::character_match_bonus('и', '/'));
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('Б', '/')
+    );
+    assert_eq!(
+      SCORE_MATCH_SLASH,
+      Comparer::character_match_bonus('и', '/')
+    );
 
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('a', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('0', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('¬', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('@', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('&', '.'));
-    assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('😨', '.'));
+    assert_eq!(
+      SCORE_MATCH_DOT,
+      Comparer::character_match_bonus('😨', '.')
+    );
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('♺', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('x', '.'));
     assert_eq!(SCORE_MATCH_DOT, Comparer::character_match_bonus('Ɣ', '.'));
@@ -248,8 +327,14 @@ mod tests {
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('¬', '_'));
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('@', ' '));
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('&', '-'));
-    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('😨', '_'));
-    assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('♺', ' '));
+    assert_eq!(
+      SCORE_MATCH_WORD,
+      Comparer::character_match_bonus('😨', '_')
+    );
+    assert_eq!(
+      SCORE_MATCH_WORD,
+      Comparer::character_match_bonus('♺', ' ')
+    );
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('x', '-'));
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus('Ɣ', '_'));
     assert_eq!(SCORE_MATCH_WORD, Comparer::character_match_bonus(']', ' '));
