@@ -224,8 +224,8 @@ mod tests {
 
   #[test]
   fn score_pref_word_start() {
-    assert!(score("amor", "app/models/order") > score("amor", "app/models/zrder"));
-    assert!(score("amor", "app models-order") > score("amor", "app models zrder"));
+    assert!(score("amor", "app/marrows/older") > score("amor", "app/marrows/zlder"));
+    assert!(score("amor", "app marrows-older") > score("amor", "app marrows zlder"));
     assert!(score("qart", "QuArTz") > score("qart", "QuaRTz"));
   }
 
