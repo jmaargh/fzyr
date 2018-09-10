@@ -20,19 +20,12 @@ impl<'q, 'c> Comparer<'q, 'c> {
   /// Create a new comparer, unless we can short-circuit because of some
   /// trivial case (e.g., no match at all)
   pub fn new(query: &'q str, candidate: &'c str) -> Result<Self, Error> {
-    // TODO: checking for a match can be done at the same time as calculating
-    // the lengths
-    if !is_match(query, candidate) {
-      return Err(Error::ShortCircuit(SCORE_MIN));
-    }
-
     if candidate.len() > CANDIDATE_MAX_BYTES || query.len() == 0 {
       // Candidate too long or query too short
       return Err(Error::ShortCircuit(SCORE_MIN));
     }
 
-    let q_len = query.chars().count();
-    let c_len = candidate.chars().count();
+    let (q_len, c_len) = Self::match_count(query, candidate)?;
 
     if q_len == c_len {
       // We already know there _is_ a match (candidate contains chars of query
@@ -209,12 +202,39 @@ impl<'q, 'c> Comparer<'q, 'c> {
       _ => false,
     }
   }
+
+  fn match_count(query: &str, candidate: &str) -> Result<(usize, usize), Error> {
+    // In a single pass, check whether `candidate` is a match for `query` and
+    // record their lengths
+
+    let mut q_len = 0;
+    let mut c_len = 0;
+
+    let mut q_iter = query.chars();
+    let mut c_iter = candidate.chars();
+
+    while let Some(cq) = q_iter.next() {
+      q_len += 1;
+      loop {
+        c_len += 1;
+        match c_iter.next() {
+          Some(cc) => if cc.to_lowercase().eq(cq.to_lowercase()) {
+            break;
+          },
+          None => return Err(Error::ShortCircuit(SCORE_MIN)),
+        }
+      }
+    }
+
+    c_len += c_iter.count();
+    Ok((q_len, c_len))
+  }
 }
 
 //==============================================================================
 
 use score::config::*;
-use score::{is_match, MatchMask, Score};
+use score::{MatchMask, Score};
 
 type TraceMatrix = ndarray::Array2<TraceEdges>;
 
