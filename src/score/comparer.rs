@@ -113,36 +113,43 @@ impl<'q, 'c> Comparer<'q, 'c> {
         // N.B. we need the `_or` value here to not match the `_or` value from
         // before
         let c_char = c_iter.next().unwrap_or(' ');
-        // Work out if our best incoming edge is the `yes` edge from the
-        // previous query character, or a `no` edge from the same q_char
-        // and get the corresponding score
-        let (prev_best_was_match, prev_best_score) = if i == 0 {
-          (false, SCORE_GAP_LEADING * j as Score)
+
+        // Scores for previous being a match, and not, respectively
+        let (mut yes_score, mut no_score) = if i == 0 {
+          // First row
+          (SCORE_MIN, SCORE_GAP_LEADING * j as Score)
         } else {
-          // Neither `i` nor `j` is ever zero here
-          if self.trace_matrix[[i - 1, j - 1]].yes.score > self.trace_matrix[[i, j - 1]].no.score {
-            (true, self.trace_matrix[[i - 1, j - 1]].yes.score)
-          } else {
-            (false, self.trace_matrix[[i, j - 1]].no.score)
-          }
+          // neither `i` nor `j` can be zero here
+          (
+            self.trace_matrix[[i - 1, j - 1]].yes.score,
+            self.trace_matrix[[i, j - 1]].no.score,
+          )
         };
 
-        // We can alwasy go on the `no` edge, so record its best score
-        self.trace_matrix[[i, j]].no.prev_was_match = prev_best_was_match;
-        self.trace_matrix[[i, j]].no.score = prev_best_score;
+        // Get the best score link for (i,j) not being a match
+        if yes_score > no_score {
+          self.trace_matrix[[i, j]].no.prev_was_match = true;
+          self.trace_matrix[[i, j]].no.score = yes_score;
+        } else {
+          self.trace_matrix[[i, j]].no.prev_was_match = false;
+          self.trace_matrix[[i, j]].no.score = no_score;
+        }
         if j != self.c_len {
-          // We only record the gap if we're not on the "extra" row
           self.trace_matrix[[i, j]].no.score += gap_score;
         }
 
         if q_char.to_lowercase().eq(c_char.to_lowercase()) {
-          // The `yes` edge is also viable from here
-          self.trace_matrix[[i, j]].yes.prev_was_match = prev_best_was_match;
-          self.trace_matrix[[i, j]].yes.score = if prev_best_was_match {
-            SCORE_MATCH_CONSECUTIVE
+          // Get the best score link for (i, j) being a match
+          yes_score += SCORE_MATCH_CONSECUTIVE;
+          no_score += self.match_bonuses[j];
+
+          if yes_score >= no_score {
+            self.trace_matrix[[i, j]].yes.prev_was_match = true;
+            self.trace_matrix[[i, j]].yes.score = yes_score;
           } else {
-            self.match_bonuses[j]
-          } + prev_best_score;
+            self.trace_matrix[[i, j]].yes.prev_was_match = false;
+            self.trace_matrix[[i, j]].yes.score = no_score;
+          }
         }
       }
     }
