@@ -29,8 +29,6 @@ doc = false
 
 [dependencies]
 ndarray = "^0.11.2"
-itertools = "^0.7.8"
-crossbeam = "^0.4.1"
 bit-vec = "^0.5.0"
 clap = "^2.32.0"
 console = "^0.6.1"
