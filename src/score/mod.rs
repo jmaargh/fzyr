@@ -13,19 +13,32 @@ pub struct PositionalCandidate<'c> {
   length: usize,
   match_mask: MatchMask,
   score: Score,
-  has_searched: bool,
+  prev_query: String,
 }
 
 impl<'c> PositionalCandidate<'c> {
   /// Create a new candidate with no matches
+  ///
+  /// Uses the (byte) length of the candidate as a hint for how long queries
+  /// are likely to be
+  #[inline]
   pub fn new(candidate: &'c str) -> Self {
+    Self::with_query_len_hint(candidate, candidate.len())
+  }
+
+  /// Create a new candidate with no matches, giving a hint for how long queries
+  /// are likely to be
+  ///
+  /// Larger hints will avoid memory allocations during searches, but obviously
+  /// use more memory
+  pub fn with_query_len_hint(candidate: &'c str, hint: usize) -> Self {
     let length = Self::calculate_len(candidate);
     Self {
       candidate: candidate,
       length: length,
       match_mask: MatchMask::from_elem(length, false),
       score: SCORE_MIN,
-      has_searched: false,
+      prev_query: String::with_capacity(hint),
     }
   }
 
@@ -35,22 +48,27 @@ impl<'c> PositionalCandidate<'c> {
   /// Non-matches return `SCORE_MIN`, exact matches return `SCORE_MAX`. Queries
   /// or candidates that are too long return `SCORE_MIN`.
   pub fn locate(&mut self, query: &str) -> Score {
-    if self.has_searched {
+    if self.prev_query == query {
       return self.score;
     }
 
     let mut comparer = match Comparer::new(query, self.candidate) {
       Ok(comp) => comp,
-      Err(comparer::Error::ShortCircuit(score)) => return self.locate_short_circuit(score),
+      Err(comparer::Error::ShortCircuit(score)) => {
+        self.prev_query.clear();
+        self.prev_query.push_str(query);
+        return self.locate_short_circuit(score);
+      }
     };
 
     self.score = comparer.locate(&mut self.match_mask);
-    self.has_searched = true;
+    self.prev_query.clear();
+    self.prev_query.push_str(query);
     self.score
   }
 
   pub fn reset(&mut self) {
-    self.has_searched = false;
+    self.prev_query.clear();
     self.match_mask.clear();
     self.score = SCORE_MIN;
   }
@@ -84,15 +102,14 @@ impl<'c> PositionalCandidate<'c> {
     self.score
   }
 
-  /// Returns true if and only if this candidate has been searched agaisnt
+  /// The previous query this was searched against, if any
   #[inline]
-  pub fn has_searched(&self) -> bool {
-    self.has_searched
+  pub fn prev_query(&self) -> &str {
+    &self.prev_query
   }
 
   fn locate_short_circuit(&mut self, score: Score) -> Score {
     // Set the mask properly when short-circuiting with SCORE_MAX or SCORE_MIN
-    self.has_searched = true;
     if score == SCORE_MAX {
       self.match_mask.set_all();
       self.score = SCORE_MAX;
