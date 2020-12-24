@@ -54,7 +54,8 @@ impl<'a> Terminal<'a> {
     let mut should_search = true;
     loop {
       if should_search {
-        self.draw(&query, &search_locate(&query, candidates, parallelism))?;
+        let search_results = search_locate(&query, candidates, parallelism);
+        self.draw(&query, candidates, &search_results)?;
       }
 
       should_search = match self.term.read_key()? {
@@ -72,10 +73,10 @@ impl<'a> Terminal<'a> {
     }
   }
 
-  fn draw(&mut self, query: &str, results: &LocateResults) -> io::Result<()> {
+  fn draw(&mut self, query: &str, candidates: &[&str], results: &LocateResults) -> io::Result<()> {
     self.clear()?;
     self.draw_query(query)?;
-    self.draw_results(results)?;
+    self.draw_results(candidates, results)?;
     Ok(())
   }
 
@@ -102,7 +103,7 @@ impl<'a> Terminal<'a> {
     Ok(())
   }
 
-  fn draw_results(&mut self, results: &LocateResults) -> io::Result<()> {
+  fn draw_results(&mut self, candidates: &[&str], results: &LocateResults) -> io::Result<()> {
     // Write the results
     let total_results = results.len().min(self.result_count);
     let mut line_count: usize = 0;
@@ -110,7 +111,7 @@ impl<'a> Terminal<'a> {
       if line_count > 0 {
         self.term.write_line("")?;
       }
-      self.draw_result(result)?;
+      self.draw_result(candidates, result)?;
       line_count += 1;
       self.drawn_lines += 1;
     }
@@ -129,7 +130,7 @@ impl<'a> Terminal<'a> {
     self.term.write_line("")
   }
 
-  fn draw_result(&mut self, result: &LocateResult) -> io::Result<()> {
+  fn draw_result(&mut self, candidates: &[&str], result: &LocateResult) -> io::Result<()> {
     let mut spent_width = 0;
 
     if self.show_scores {
@@ -141,8 +142,8 @@ impl<'a> Terminal<'a> {
       spent_width += 8;
     }
 
-    for (i, ch) in result
-      .candidate
+    let found = candidates[result.candidate_index];
+    for (i, ch) in found
       .chars()
       .take(self.max_display_width - spent_width)
       .enumerate()
