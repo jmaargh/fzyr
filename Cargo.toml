@@ -25,16 +25,21 @@ name = "fzyr"
 name = "fzyr"
 path = "src/bin/main.rs"
 doc = false
+required-features = ["binary-build"]
 
 
 [dependencies]
 ndarray = "^0.11.2"
-itertools = "^0.7.8"
-crossbeam = "^0.4.1"
 bit-vec = "^0.5.0"
-clap = "^2.32.0"
-console = "^0.6.1"
+itertools = { version = "^0.7.8", optional = true }
+crossbeam = { version = "^0.4.1", optional = true }
+clap = { version = "^2.32.0", optional = true }
+console = { version = "^0.6.1", optional = true }
 
+[features]
+default = ["binary-build", "parallel"]
+binary-build = ["clap", "console"]
+parallel = ["itertools", "crossbeam"]
 
 [profile.release]
 opt-level = 3
