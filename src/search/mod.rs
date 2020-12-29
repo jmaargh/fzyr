@@ -8,69 +8,72 @@ use self::crossbeam::channel;
 use self::crossbeam::scope as thread_scope;
 use self::itertools::kmerge;
 
-use score::{has_match, locate, score, LocateResult, ScoreResult};
+use score::{has_match, locate_inner, score_inner, LocateResult, ScoreResult};
 
 /// Collection of scores and the candidates they apply to
-pub type ScoreResults<'a> = Vec<ScoreResult<'a>>;
+pub type ScoreResults = Vec<ScoreResult>;
 /// Collection of scores, locations, and the candidates they apply to
-pub type LocateResults<'a> = Vec<LocateResult<'a>>;
+pub type LocateResults = Vec<LocateResult>;
 
 /// Search among a collection of candidates using the given query, returning
 /// an ordered collection of results (highest score first)
-pub fn search_score<'src>(
+pub fn search_score(
   query: &str,
-  candidates: &[&'src str],
+  candidates: &[&str],
   parallelism: usize,
-) -> ScoreResults<'src> {
-  search_internal(query, candidates, parallelism, &score).collect()
+) -> ScoreResults {
+  search_internal(query, candidates, parallelism, score_inner).collect()
 }
 
 /// Search among a collection of candidates using the given query, returning
 /// an ordered collection of results (highest score first) with the locations
 /// of the query in each candidate
-pub fn search_locate<'src>(
+pub fn search_locate(
   query: &str,
-  candidates: &[&'src str],
+  candidates: &[&str],
   parallelism: usize,
-) -> LocateResults<'src> {
-  search_internal(query, candidates, parallelism, &locate).collect()
+) -> LocateResults {
+  search_internal(query, candidates, parallelism, locate_inner).collect()
 }
 
-fn search_internal<'a, F, T>(
+fn search_internal<T>(
   query: &str,
-  candidates: &[&'a str],
+  candidates: &[&str],
   parallelism: usize,
-  search_fn: &'static F,
-) -> Box<Iterator<Item = T> + 'a>
+  search_fn: fn(&str, &str, usize) -> T,
+) -> Box<dyn Iterator<Item = T>>
 where
-  T: PartialOrd + Sized + Send + 'a,
-  F: Fn(&str, &'a str) -> T + Sync,
+  T: PartialOrd + Sized + Send + 'static,
 {
   let parallelism = calculate_parallelism(candidates.len(), parallelism, query.is_empty());
   let mut candidates = candidates;
   let (sender, receiver) = channel::bounded::<Vec<T>>(parallelism);
 
   if parallelism < 2 {
-    Box::new(search_worker(candidates, query, search_fn).into_iter())
+    Box::new(search_worker(candidates, query, 0, search_fn).into_iter())
   } else {
     thread_scope(|scope| {
       let mut remaining_candidates = candidates.len();
       let per_thread_count = ceil_div(remaining_candidates, parallelism);
+      let mut thread_offset = 0;
 
       // Create "parallelism" threads
       while remaining_candidates > 0 {
         // Search in this thread's share
-        let split = candidates.split_at(if remaining_candidates >= per_thread_count {
+        let split = if remaining_candidates >= per_thread_count {
           remaining_candidates -= per_thread_count;
           per_thread_count
         } else {
           remaining_candidates = 0;
           remaining_candidates
-        });
+        };
+        let split = candidates.split_at(split);
+        let splitted_len = split.0.len();
         let sender = sender.clone();
         scope.spawn(move || {
-          sender.send(search_worker(split.0, query, search_fn));
+          sender.send(search_worker(split.0, query, thread_offset, search_fn));
         });
+        thread_offset += splitted_len;
 
         // Remove that share from the candidate slice
         candidates = split.1;
@@ -84,15 +87,19 @@ where
 }
 
 // Search among candidates against a query in a single thread
-fn search_worker<'a, 'b, F, T>(candidates: &'b [&'a str], query: &'b str, search_fn: F) -> Vec<T>
+fn search_worker<T>(
+  candidates: &[&str],
+  query: &str,
+  offset_index: usize,
+  search_fn: fn(&str, &str, usize) -> T
+) -> Vec<T>
 where
   T: PartialOrd,
-  F: Fn(&str, &'a str) -> T,
 {
   let mut out = Vec::with_capacity(candidates.len());
-  for candidate in candidates {
+  for (index, candidate) in candidates.into_iter().enumerate() {
     if has_match(&query, candidate) {
-      out.push(search_fn(&query, candidate));
+      out.push(search_fn(&query, candidate, offset_index + index));
     }
   }
   out.sort_unstable_by(|result1, result2| result1.partial_cmp(result2).unwrap_or(Ordering::Less));
@@ -177,11 +184,11 @@ mod tests {
 
     let rs = search_score("", &["tags"], parallelism);
     assert_eq!(1, rs.len());
-    assert_eq!("tags", rs[0].candidate);
+    assert_eq!(0, rs[0].candidate_index);
 
     let rs = search_score("♺", &["ñîƹ♺à"], parallelism);
     assert_eq!(1, rs.len());
-    assert_eq!("ñîƹ♺à", rs[0].candidate);
+    assert_eq!(0, rs[0].candidate_index);
 
     let cs = &["tags", "test"];
 
@@ -190,7 +197,7 @@ mod tests {
 
     let rs = search_score("te", cs, parallelism);
     assert_eq!(1, rs.len());
-    assert_eq!("test", rs[0].candidate);
+    assert_eq!(1, rs[0].candidate_index);
 
     let rs = search_score("foobar", cs, parallelism);
     assert_eq!(0, rs.len());
@@ -198,10 +205,8 @@ mod tests {
     let rs = search_score("ts", cs, parallelism);
     assert_eq!(2, rs.len());
     assert_eq!(
-      vec!["test", "tags"],
-      rs.iter()
-        .map(|r| r.candidate)
-        .collect::<Vec<&'static str>>()
+      vec![1, 0],
+      rs.iter().map(|r| r.candidate_index).collect::<Vec<_>>()
     );
   }
 
@@ -237,7 +242,7 @@ mod tests {
     for r in rs {
       assert_eq!(
         "neet",
-        r.candidate.chars().rev().take(4).collect::<String>()
+        cs[r.candidate_index].chars().rev().take(4).collect::<String>()
       );
     }
 
@@ -245,11 +250,11 @@ mod tests {
     assert_eq!(9, rs.len());
     assert_eq!(
       "neet",
-      rs[0].candidate.chars().rev().take(4).collect::<String>()
+      cs[rs[0].candidate_index].chars().rev().take(4).collect::<String>()
     );
 
     let rs = search_score("six", cs, parallelism);
-    assert_eq!("six", rs[0].candidate);
+    assert_eq!("six", cs[rs[0].candidate_index]);
   }
 
   fn search_large_parallelism(parallelism: usize) {
@@ -268,7 +273,7 @@ mod tests {
     // This has been precalculated
     // e.g. via `$ seq 0 99999 | grep '.*1.*2.*' | wc -l`
     assert_eq!(8146, rs.len());
-    assert_eq!("12", rs[0].candidate);
+    assert_eq!("12", candidates[rs[0].candidate_index]);
   }
 
   // TODO: test locate

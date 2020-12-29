@@ -15,34 +15,34 @@ type ScoreMatrix = Array2<Score>;
 
 /// Result of querying the score against a candidate
 #[derive(Debug)]
-pub struct ScoreResult<'src> {
-  pub candidate: &'src str,
+pub struct ScoreResult {
+  pub candidate_index: usize,
   pub score: Score,
 }
 
 /// Result of querying the score and location against a candidate
 #[derive(Debug)]
-pub struct LocateResult<'src> {
-  pub candidate: &'src str,
+pub struct LocateResult {
+  pub candidate_index: usize,
   pub score: Score,
   /// Binary mask showing where the charcaters of the query match the candidate
   pub match_mask: BitVec,
 }
 
-impl<'src> ScoreResult<'src> {
-  pub fn new(candidate: &'src str) -> Self {
-    Self::with_score(candidate, SCORE_MIN)
+impl ScoreResult {
+  pub fn new(candidate_index: usize) -> Self {
+    Self::with_score(candidate_index, SCORE_MIN)
   }
 
-  pub fn with_score(candidate: &'src str, score: Score) -> Self {
+  pub fn with_score(candidate_index: usize, score: Score) -> Self {
     Self {
-      candidate: candidate,
-      score: score,
+      candidate_index,
+      score,
     }
   }
 }
 
-impl<'src> PartialOrd for ScoreResult<'src> {
+impl PartialOrd for ScoreResult {
   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
     Some(
       self
@@ -54,27 +54,27 @@ impl<'src> PartialOrd for ScoreResult<'src> {
   }
 }
 
-impl<'src> PartialEq for ScoreResult<'src> {
+impl PartialEq for ScoreResult {
   fn eq(&self, other: &Self) -> bool {
     self.score == other.score
   }
 }
 
-impl<'src> LocateResult<'src> {
-  pub fn new(candidate: &'src str) -> Self {
-    Self::with_score(candidate, SCORE_MIN)
+impl LocateResult {
+  pub fn new(candidate_index: usize, candidate_size: usize) -> Self {
+    Self::with_score(candidate_index, candidate_size, SCORE_MIN)
   }
 
-  pub fn with_score(candidate: &'src str, score: Score) -> Self {
+  pub fn with_score(candidate_index: usize, candidate_size: usize, score: Score) -> Self {
     Self {
-      candidate: candidate,
+      candidate_index,
       score: score,
-      match_mask: BitVec::from_elem(candidate.chars().count(), false),
+      match_mask: BitVec::from_elem(candidate_size, false),
     }
   }
 }
 
-impl<'src> PartialOrd for LocateResult<'src> {
+impl PartialOrd for LocateResult {
   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
     Some(
       self
@@ -86,7 +86,7 @@ impl<'src> PartialOrd for LocateResult<'src> {
   }
 }
 
-impl<'src> PartialEq for LocateResult<'src> {
+impl PartialEq for LocateResult {
   fn eq(&self, other: &Self) -> bool {
     self.score == other.score
   }
@@ -107,24 +107,33 @@ pub fn has_match(query: &str, candidate: &str) -> bool {
 /// Calculates a score for how well a `query` matches a `candidate`
 ///
 /// Higher scores are better
-pub fn score<'src>(query: &str, candidate: &'src str) -> ScoreResult<'src> {
+pub fn score(query: &str, candidate: &str) -> ScoreResult {
+  score_inner(query, candidate, 0)
+}
+
+pub(crate) fn score_inner(query: &str, candidate: &str, index: usize) -> ScoreResult {
   let (q_len, c_len) = match get_lengths(query, candidate) {
-    LengthsOrScore::Score(s) => return ScoreResult::with_score(candidate, s),
+    LengthsOrScore::Score(s) => return ScoreResult::with_score(index, s),
     LengthsOrScore::Lengths(q, c) => (q, c),
   };
 
   let (best_score_overall, _) = score_internal(query, candidate, q_len, c_len);
-  ScoreResult::with_score(candidate, best_score_overall[[q_len - 1, c_len - 1]])
+  ScoreResult::with_score(index, best_score_overall[[q_len - 1, c_len - 1]])
 }
 
 /// Calculates a score for how well a `query` matches a `candidate` and gives
 /// the locations of the `query` characters in the `candidate` too
 ///
 /// Higher scores are better
-pub fn locate<'src>(query: &str, candidate: &'src str) -> LocateResult<'src> {
+pub fn locate(query: &str, candidate: &str) -> LocateResult {
+  locate_inner(query, candidate, 0)
+}
+
+pub(crate) fn locate_inner(query: &str, candidate: &str, index: usize) -> LocateResult {
+  let candidate_chars = candidate.chars().count();
   let (q_len, c_len) = match get_lengths(query, candidate) {
     LengthsOrScore::Score(s) => {
-      let mut out = LocateResult::with_score(candidate, s);
+      let mut out = LocateResult::with_score(index, candidate_chars, s);
       if s == SCORE_MAX {
         // This was an exact match
         out.match_mask.set_all();
@@ -135,7 +144,7 @@ pub fn locate<'src>(query: &str, candidate: &'src str) -> LocateResult<'src> {
   };
 
   let (best_score_overall, best_score_w_ending) = score_internal(query, candidate, q_len, c_len);
-  let mut out = LocateResult::with_score(candidate, best_score_overall[[q_len - 1, c_len - 1]]);
+  let mut out = LocateResult::with_score(index, candidate_chars, best_score_overall[[q_len - 1, c_len - 1]]);
 
   let mut query_iter = query.chars();
   let mut cand_iter = candidate.chars();
@@ -499,30 +508,21 @@ mod tests {
     );
   }
 
-  fn assert_eq_locate(result: LocateResult, query: &str, score: Score) {
+  fn assert_locate_score(query: &str, candidate: &str, score: Score) {
+    let result = locate(query, candidate);
+
     assert_eq!(score, result.score);
-    let mut found_query = String::new();
-    for (i, ch) in result.candidate.chars().enumerate() {
-      if result.match_mask[i] {
-        found_query.push(ch);
-      }
-    }
-    assert_eq!(query.to_lowercase(), found_query.to_lowercase());
   }
 
   #[test]
   fn locate_exact() {
-    assert_eq_locate(locate("query", "query"), "query", SCORE_MAX);
-    assert_eq_locate(
-      locate("156aufsdn926f9=sdk/~']", "156aufsdn926f9=sdk/~']"),
+    assert_locate_score("query", "query", SCORE_MAX);
+    assert_locate_score("156aufsdn926f9=sdk/~']",
       "156aufsdn926f9=sdk/~']",
       SCORE_MAX,
     );
-    assert_eq_locate(
-      locate(
+    assert_locate_score(
         "😨Ɣ·®x¯ÍĞ.ɅƁñîƹ♺àwÑ☆ǈ😞´ƙºÑ♫",
-        "😨Ɣ·®x¯ÍĞ.ɅƁñîƹ♺àwÑ☆ǈ😞´ƙºÑ♫",
-      ),
       "😨Ɣ·®x¯ÍĞ.ɅƁñîƹ♺àwÑ☆ǈ😞´ƙºÑ♫",
       SCORE_MAX,
     );
@@ -530,48 +530,35 @@ mod tests {
 
   #[test]
   fn locate_empty() {
-    assert_eq_locate(locate("", ""), "", SCORE_MIN);
-    assert_eq_locate(locate("", "candidate"), "", SCORE_MIN);
-    assert_eq_locate(
-      locate(
+    assert_locate_score("", "", SCORE_MIN);
+    assert_locate_score("", "candidate", SCORE_MIN);
+    assert_locate_score(
         "",
         "😨Ɣ·®x¯ÍĞ.ɅƁñîƹ♺àwÑ☆ǈ😞´ƙºÑ♫, ",
-      ),
-      "",
       SCORE_MIN,
     );
-    assert_eq_locate(locate("", "прописная БУКВА"), "", SCORE_MIN);
-    assert_eq_locate(locate("", "a"), "", SCORE_MIN);
-    assert_eq_locate(locate("", "4561"), "", SCORE_MIN);
+    assert_locate_score("", "прописная БУКВА", SCORE_MIN);
+    assert_locate_score("", "a", SCORE_MIN);
+    assert_locate_score("", "4561", SCORE_MIN);
   }
 
   #[test]
   fn locate_gaps() {
-    assert_eq_locate(locate("a", "*a"), "a", SCORE_GAP_LEADING);
-    assert_eq_locate(locate("a", "*ba"), "a", SCORE_GAP_LEADING * 2.0);
-    assert_eq_locate(
-      locate("a", "**a*"),
-      "a",
+    assert_locate_score("a", "*a", SCORE_GAP_LEADING);
+    assert_locate_score("a", "*ba", SCORE_GAP_LEADING * 2.0);
+    assert_locate_score("a", "**a*",
       SCORE_GAP_LEADING * 2.0 + SCORE_GAP_TRAILING,
     );
-    assert_eq_locate(
-      locate("a", "**a**"),
-      "a",
+    assert_locate_score("a", "**a**",
       SCORE_GAP_LEADING * 2.0 + SCORE_GAP_TRAILING * 2.0,
     );
-    assert_eq_locate(
-      locate("aa", "**aa♺*"),
-      "aa",
+    assert_locate_score("aa", "**aa♺*",
       SCORE_GAP_LEADING * 2.0 + SCORE_MATCH_CONSECUTIVE + SCORE_GAP_TRAILING * 2.0,
     );
-    assert_eq_locate(
-      locate("ab", "**a-b♺*"),
-      "ab",
+    assert_locate_score("ab", "**a-b♺*",
       SCORE_GAP_LEADING * 2.0 + SCORE_GAP_INNER + SCORE_MATCH_WORD + SCORE_GAP_TRAILING * 2.0,
     );
-    assert_eq_locate(
-      locate("aa", "**a♺a**"),
-      "aa",
+    assert_locate_score("aa", "**a♺a**",
       SCORE_GAP_LEADING
         + SCORE_GAP_LEADING
         + SCORE_GAP_INNER
@@ -582,72 +569,50 @@ mod tests {
 
   #[test]
   fn locate_consecutive() {
-    assert_eq_locate(
-      locate("aa", "*aa"),
-      "aa",
+    assert_locate_score("aa", "*aa",
       SCORE_GAP_LEADING + SCORE_MATCH_CONSECUTIVE,
     );
-    assert_eq_locate(
-      locate("aaa", "♫aaa"),
-      "aaa",
+    assert_locate_score("aaa", "♫aaa",
       SCORE_GAP_LEADING + SCORE_MATCH_CONSECUTIVE * 2.0,
     );
-    assert_eq_locate(
-      locate("aaa", "*a*aa"),
-      "aaa",
+    assert_locate_score("aaa", "*a*aa",
       SCORE_GAP_LEADING + SCORE_GAP_INNER + SCORE_MATCH_CONSECUTIVE,
     );
   }
 
   #[test]
   fn locate_slash() {
-    assert_eq_locate(
-      locate("a", "/a"),
-      "a",
+    assert_locate_score("a", "/a",
       SCORE_GAP_LEADING + SCORE_MATCH_SLASH,
     );
-    assert_eq_locate(
-      locate("a", "*/a"),
-      "a",
+    assert_locate_score("a", "*/a",
       SCORE_GAP_LEADING * 2.0 + SCORE_MATCH_SLASH,
     );
-    assert_eq_locate(
-      locate("aa", "a/aa"),
-      "aa",
+    assert_locate_score("aa", "a/aa",
       SCORE_GAP_LEADING * 2.0 + SCORE_MATCH_SLASH + SCORE_MATCH_CONSECUTIVE,
     );
   }
 
   #[test]
   fn locate_capital() {
-    assert_eq_locate(
-      locate("a", "bA"),
-      "a",
+    assert_locate_score("a", "bA",
       SCORE_GAP_LEADING + SCORE_MATCH_CAPITAL,
     );
-    assert_eq_locate(
-      locate("a", "baA"),
-      "a",
+    assert_locate_score("a", "baA",
       SCORE_GAP_LEADING * 2.0 + SCORE_MATCH_CAPITAL,
     );
-    assert_eq_locate(
-      locate("aa", "😞aAa"),
-      "aa",
+    assert_locate_score("aa", "😞aAa",
       SCORE_GAP_LEADING * 2.0 + SCORE_MATCH_CAPITAL + SCORE_MATCH_CONSECUTIVE,
     );
   }
 
   #[test]
   fn locate_dot() {
-    assert_eq_locate(locate("a", ".a"), "a", SCORE_GAP_LEADING + SCORE_MATCH_DOT);
-    assert_eq_locate(
-      locate("a", "*a.a"),
-      "a",
+    assert_locate_score("a", ".a", SCORE_GAP_LEADING + SCORE_MATCH_DOT);
+    assert_locate_score("a", "*a.a",
       SCORE_GAP_LEADING * 3.0 + SCORE_MATCH_DOT,
     );
-    assert_eq_locate(
-      locate("a", "♫a.a"),
-      "a",
+    assert_locate_score("a", "♫a.a",
       SCORE_GAP_LEADING + SCORE_GAP_INNER + SCORE_MATCH_DOT,
     );
   }

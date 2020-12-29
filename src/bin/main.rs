@@ -60,7 +60,7 @@ fn run() -> i32 {
         } else {
           print!("({:5.2}) ", result.score);
         }
-        println!("{}", result.candidate);
+        println!("{}", candidates[result.candidate_index]);
       }
     }
     0
