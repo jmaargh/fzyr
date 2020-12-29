@@ -1,11 +1,11 @@
 [package]
 name = "fzyr"
-version = "0.1.2"
-homepage = "https://github.com/yonni12/fzyr"
-authors = ["yonni12 <https://github.com/yonni12>"]
+version = "0.2.0"
+homepage = "https://github.com/jmaargh/fzyr"
+authors = ["jmaargh <https://github.com/jmaargh>"]
 
 description = "A fuzzy(er) finder 🔎"
-repository = "https://github.com/yonni12/fzyr"
+repository = "https://github.com/jmaargh/fzyr"
 # TODO:
 # documentation = ""
 
