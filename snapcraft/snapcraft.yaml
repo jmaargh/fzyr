@@ -1,5 +1,5 @@
 name: fzyr
-version: 0.1.2
+version: 0.2.0
 summary: Fast fuzzy unicode text search
 description: |
   **fzyr** is a simple and fast fuzzy text search. It exists as both a Rust 
