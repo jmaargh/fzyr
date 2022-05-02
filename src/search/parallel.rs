@@ -1,7 +1,16 @@
 use super::*;
 
 /// Search among a collection of candidates using the given query, returning
-/// an ordered collection of results (highest score first)
+/// an ordered collection of results (highest score first).
+///
+/// # Example
+///
+/// ```rust
+/// # use fzyr::search_score;
+/// let items = vec!["this", "is", "kind", "of", "magic"];
+/// let res = search_score("mgc", &items, 1);
+/// assert_eq!("magic", items[res[0].candidate_index]);
+/// ```
 pub fn search_score(
   query: &str,
   candidates: &[&str],
@@ -12,7 +21,16 @@ pub fn search_score(
 
 /// Search among a collection of candidates using the given query, returning
 /// an ordered collection of results (highest score first) with the locations
-/// of the query in each candidate
+/// of the query in each candidate.
+///
+/// # Example
+///
+/// ```rust
+/// # use fzyr::search_locate;
+/// let items = vec!["this", "is", "kind", "of", "magic"];
+/// let res = search_locate("mgc", &items, 1);
+/// assert_eq!("magic", items[res[0].candidate_index]);
+/// ```
 pub fn search_locate(
   query: &str,
   candidates: &[&str],
@@ -37,7 +55,7 @@ where
   if parallelism < 2 {
     Box::new(search_worker(candidates.iter(), query, 0, search_fn).into_iter())
   } else {
-    crossbeam::scope(|scope| {
+    let _ = crossbeam::scope(|scope| {
       let mut remaining_candidates = candidates.len();
       let per_thread_count = ceil_div(remaining_candidates, parallelism);
       let mut thread_offset = 0;
@@ -55,8 +73,8 @@ where
         let split = candidates.split_at(split);
         let splitted_len = split.0.len();
         let sender = sender.clone();
-        scope.spawn(move || {
-          sender.send(search_worker(split.0.iter(), query, thread_offset, search_fn));
+        scope.spawn(move |_| {
+          let _ = sender.send(search_worker(split.0.iter(), query, thread_offset, search_fn));
         });
         thread_offset += splitted_len;
 

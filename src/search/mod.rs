@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::iter::ExactSizeIterator;
 
 use score::{has_match, locate_inner, score_inner, LocateResult, ScoreResult};
 
@@ -14,23 +13,46 @@ pub type ScoreResults = Vec<ScoreResult>;
 /// Collection of scores, locations, and the candidates they apply to
 pub type LocateResults = Vec<LocateResult>;
 
+/// Search serially among a collection of candidates using the given query, returning
+/// an ordered collection of results (highest score first).
+///
+/// # Example
+///
+/// ```rust
+/// # use fzyr::search_serial;
+/// let items = vec!["this", "is", "kind", "of", "magic"];
+/// let res = search_serial("mgc", items.iter());
+/// assert_eq!("magic", items[res[0].candidate_index]);
+/// ```
 pub fn search_serial(
   query: &str,
-  candidates: impl Iterator<Item = impl AsRef<str>> + ExactSizeIterator,
+  candidates: impl IntoIterator<Item = impl AsRef<str>>,
 ) -> ScoreResults {
   search_worker(candidates, query, 0, score_inner)
 }
 
+/// Search serially among a collection of candidates using the given query, returning
+/// an ordered collection of results (highest score first) with the locations
+/// of the query in each candidate.
+///
+/// # Example
+///
+/// ```rust
+/// # use fzyr::locate_serial;
+/// let items = vec!["this", "is", "kind", "of", "magic"];
+/// let res = locate_serial("mgc", items.iter());
+/// assert_eq!("magic", items[res[0].candidate_index]);
+/// ```
 pub fn locate_serial(
   query: &str,
-  candidates: impl Iterator<Item = impl AsRef<str>> + ExactSizeIterator,
+  candidates: impl IntoIterator<Item = impl AsRef<str>>,
 ) -> LocateResults {
   search_worker(candidates, query, 0, locate_inner)
 }
 
 // Search among candidates against a query in a single thread
 fn search_worker<T>(
-  candidates: impl IntoIterator<Item = impl AsRef<str>> + ExactSizeIterator,
+  candidates: impl IntoIterator<Item = impl AsRef<str>>,
   query: &str,
   offset_index: usize,
   search_fn: fn(&str, &str, usize) -> T
@@ -38,8 +60,10 @@ fn search_worker<T>(
 where
   T: PartialOrd,
 {
-  let mut out = Vec::with_capacity(candidates.len());
-  for (index, candidate) in candidates.into_iter().enumerate() {
+  let candidates = candidates.into_iter();
+  let (low, high) = candidates.size_hint();
+  let mut out = Vec::with_capacity(high.unwrap_or(low));
+  for (index, candidate) in candidates.enumerate() {
     let candidate = candidate.as_ref();
     if has_match(&query, candidate) {
       out.push(search_fn(&query, candidate, offset_index + index));
