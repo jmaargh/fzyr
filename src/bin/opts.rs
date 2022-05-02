@@ -1,6 +1,6 @@
 extern crate clap;
 
-use self::clap::{App, Arg};
+use self::clap::{Command, Arg};
 
 pub const NAME: &'static str = env!("CARGO_PKG_NAME");
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -43,65 +43,65 @@ pub fn cmd_parse() -> Options {
 
   let long_about: String = format!("{}\n[{}]", DESCRIPTION, WEBSITE);
 
-  let matches = App::new(NAME)
+  let matches = Command::new(NAME)
     .version(VERSION)
     .about(DESCRIPTION)
     .long_about(long_about.as_ref())
     .arg(
-      Arg::with_name("query")
-        .short("q")
+      Arg::new("query")
+        .short('q')
         .long("query")
         .value_name("QUERY")
         .default_value(&deflt_query)
         .help("Query string to search for"),
     )
     .arg(
-      Arg::with_name("lines")
-        .short("l")
+      Arg::new("lines")
+        .short('l')
         .long("lines")
         .value_name("LINES")
         .default_value(&deflt_lines)
         .help("Number of output lines to display"),
     )
     .arg(
-      Arg::with_name("show-scores")
-        .short("s")
+      Arg::new("show-scores")
+        .short('s')
         .long("show-scores")
         .help("Show numerical scores for each match"),
     )
     .arg(
-      Arg::with_name("parallelism")
-        .short("j")
+      Arg::new("parallelism")
+        .short('j')
         .long("parallelism")
         .value_name("THREADS")
         .default_value(&deflt_parallelism)
         .help("Maximum number of worker threads to use"),
     )
     .arg(
-      Arg::with_name("prompt")
-        .short("p")
+      Arg::new("prompt")
+        .short('p')
         .long("prompt")
         .value_name("PROMPT")
         .default_value(&deflt_prompt)
         .help("Propmt to show when entering queries"),
     )
     .arg(
-      Arg::with_name("benchmark")
-        .short("b")
+      Arg::new("benchmark")
+        .short('b')
         .long("benchmark")
         .value_name("REPEATS")
         .default_value(&deflt_benchmark)
         .help("Set to a positive value to run that many repeated searches for benchmarking"),
     )
     .arg(
-      Arg::with_name("workers")
+      Arg::new("workers")
         .long("workers")
         .value_name("THREADS")
         .help("Identical to \"--parallelism\""),
     )
     .arg(
-      Arg::with_name("show-matches")
-        .short("e")
+      Arg::new("show-matches")
+        .short('e')
         .long("show-matches")
         .value_name("QUERY")
         .help("Identical to \"--query\""),
